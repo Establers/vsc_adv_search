@@ -31,7 +31,11 @@ export class SearchEngine {
   ): Promise<void> {
     try {
       const raw = await vscode.workspace.fs.readFile(uri);
-      const text = new TextDecoder("utf8").decode(raw);
+      let text = new TextDecoder("utf8").decode(raw);
+
+      // 한글 등 유니코드 문자열 처리를 위해 NFC 정규화
+      text = text.normalize('NFC');
+      needle = needle.normalize('NFC');
       
       if (options.regex) {
         this.searchWithRegex(text, uri, needle, options, emit);
