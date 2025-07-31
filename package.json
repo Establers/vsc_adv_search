@@ -32,6 +32,7 @@
         {
           "id": "advSearch.searchResults",
           "name": "검색 결과",
+          "type": "webview",
           "when": "true"
         }
       ]
