@@ -73,7 +73,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
       const commentClass = match.isComment ? 'comment' : '';
 
       // 미리보기용 전체 라인 추출
-      const lineText = match.fullText.split(/\r?\n/)[match.line - 1] || '';
+      const lineText = match.lineText;
 
       return `
         <div class="result-item ${isCurrent ? 'current-match' : ''} ${commentClass}" data-index="${index}" title="${this._escapeHtml(lineText)}">
