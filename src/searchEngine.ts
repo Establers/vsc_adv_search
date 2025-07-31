@@ -13,13 +13,14 @@ export interface SearchOptions {
   caseSensitive?: boolean;
   wholeWord?: boolean;
   regex?: boolean;
+  includeComments?: boolean;
   includePattern?: string;
   excludePattern?: string;
 }
 
 export class SearchEngine {
   /**
-   * 파일에서 주석을 제외하고 검색
+   * 파일에서 문자열 검색 (옵션에 따라 주석 포함 여부 처리)
    */
   public static async searchFile(
     uri: vscode.Uri,
@@ -102,13 +103,13 @@ export class SearchEngine {
           column++;
           continue;
         default: // code
-          if (ch === "/" && next === "/") {
+          if (!options.includeComments && ch === "/" && next === "/") {
             mode = "line";
             i += 2;
             column += 2;
             continue;
           }
-          if (ch === "/" && next === "*") {
+          if (!options.includeComments && ch === "/" && next === "*") {
             mode = "block";
             i += 2;
             column += 2;
@@ -211,13 +212,13 @@ export class SearchEngine {
             column++;
             continue;
           default: // code
-            if (ch === "/" && next === "/") {
+            if (!options.includeComments && ch === "/" && next === "/") {
               mode = "line";
               i += 2;
               column += 2;
               continue;
             }
-            if (ch === "/" && next === "*") {
+            if (!options.includeComments && ch === "/" && next === "*") {
               mode = "block";
               i += 2;
               column += 2;

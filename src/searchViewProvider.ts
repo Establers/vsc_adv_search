@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { SearchMatch } from "./searchEngine";
+import { SearchMatch, SearchOptions } from "./searchEngine";
 
 export class SearchViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "advSearch.searchResults";
@@ -7,6 +7,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
   private _searchResults: SearchMatch[] = [];
   private _currentMatchIndex: number = -1;
   private _searchQuery: string = "";
+  private _searchOptions: SearchOptions = {};
 
   constructor(private readonly _extensionUri: vscode.Uri) {}
 
@@ -36,15 +37,16 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           this._prevMatch();
           break;
         case 'search':
-          this._performSearch(data.query);
+          this._performSearch(data.query, data.options);
           break;
       }
     });
   }
 
-  public updateSearchResults(results: SearchMatch[], query: string) {
+  public updateSearchResults(results: SearchMatch[], query: string, options: SearchOptions) {
     this._searchResults = results;
     this._searchQuery = query;
+    this._searchOptions = options;
     this._currentMatchIndex = -1;
     
     if (this._view) {
@@ -55,6 +57,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
   public clearResults() {
     this._searchResults = [];
     this._searchQuery = "";
+    this._searchOptions = {};
     this._currentMatchIndex = -1;
     
     if (this._view) {
@@ -108,6 +111,19 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             display: flex;
             gap: 8px;
             margin-bottom: 10px;
+          }
+
+          .options {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 11px;
+          }
+
+          .options label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
           }
           
           .search-input {
@@ -240,11 +256,17 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
       </head>
       <body>
         <div class="search-header">
-          <div class="search-input-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="검색어를 입력하세요..." value="${this._escapeHtml(this._searchQuery)}">
-            <button class="search-btn" onclick="performSearch()">검색</button>
-          </div>
-          <div class="search-info">
+        <div class="search-input-container">
+          <input type="text" class="search-input" id="searchInput" placeholder="검색어를 입력하세요..." value="${this._escapeHtml(this._searchQuery)}">
+          <button class="search-btn" onclick="performSearch()">검색</button>
+        </div>
+        <div class="options">
+          <label><input type="checkbox" id="caseSensitive" ${this._searchOptions.caseSensitive ? 'checked' : ''}>대소문자 구분</label>
+          <label><input type="checkbox" id="wholeWord" ${this._searchOptions.wholeWord ? 'checked' : ''}>전체 단어</label>
+          <label><input type="checkbox" id="regex" ${this._searchOptions.regex ? 'checked' : ''}>정규식</label>
+          <label><input type="checkbox" id="includeComments" ${this._searchOptions.includeComments ? 'checked' : ''}>주석 포함</label>
+        </div>
+        <div class="search-info">
             ${this._searchQuery ? `"${this._escapeHtml(this._searchQuery)}" - ${this._searchResults.length}개 결과` : '검색어를 입력하고 검색 버튼을 클릭하세요'}
           </div>
           ${this._searchResults.length > 0 ? `
@@ -264,9 +286,16 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           
           function performSearch() {
             const query = document.getElementById('searchInput').value;
+            const options = {
+              caseSensitive: document.getElementById('caseSensitive').checked,
+              wholeWord: document.getElementById('wholeWord').checked,
+              regex: document.getElementById('regex').checked,
+              includeComments: document.getElementById('includeComments').checked
+            };
             vscode.postMessage({
               type: 'search',
-              query: query
+              query: query,
+              options: options
             });
           }
           
@@ -348,11 +377,11 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
     this._goToMatch(this._currentMatchIndex);
   }
 
-  private async _performSearch(query: string): Promise<void> {
+  private async _performSearch(query: string, options: SearchOptions): Promise<void> {
     if (!query.trim()) return;
-    
+
     // 메인 익스텐션의 검색 기능 호출
-    await vscode.commands.executeCommand('advSearch.searchIgnoreComments', query);
+    await vscode.commands.executeCommand('advSearch.searchIgnoreComments', query, options);
   }
 
   private _updateView(): void {
