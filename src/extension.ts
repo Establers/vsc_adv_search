@@ -21,7 +21,7 @@ class AdvancedSearchProvider {
     this.viewProvider = new SearchViewProvider(vscode.extensions.getExtension('vsc-adv-search')?.extensionUri || vscode.Uri.file(''));
   }
 
-  async searchIgnoreComments(query?: string) {
+  async searchIgnoreComments(query?: string, options?: any) {
     if (!query) {
       query = await vscode.window.showInputBox({
         prompt: "검색할 문자열 (주석 제외)",
@@ -31,7 +31,7 @@ class AdvancedSearchProvider {
 
     if (!query) return;
 
-    this.searchOptions = await this.getSearchOptions();
+    this.searchOptions = options || await this.getSearchOptions();
     this.searchQuery = query;
     this.searchResults = [];
     this.currentMatchIndex = -1;
@@ -46,7 +46,7 @@ class AdvancedSearchProvider {
 
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: "주석 제외 검색 중...",
+      title: this.searchOptions.includeComments ? "주석 포함 검색 중..." : "주석 제외 검색 중...",
       cancellable: true
     }, async (progress, token) => {
       const limit = this.pLimit(8);
@@ -62,7 +62,7 @@ class AdvancedSearchProvider {
 
       if (this.searchResults.length > 0) {
         // 사이드바 뷰 업데이트
-        this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery);
+        this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery, this.searchOptions);
         
         // 사이드바 뷰 표시
         await vscode.commands.executeCommand('advSearch.searchResults.focus');
@@ -94,6 +94,12 @@ class AdvancedSearchProvider {
       "정규식 검색"
     ], { placeHolder: "정규식 검색 여부를 선택하세요" });
     options.regex = useRegex === "정규식 검색";
+
+    const commentOption = await vscode.window.showQuickPick([
+      "주석 제외",
+      "주석 포함"
+    ], { placeHolder: "주석 포함 여부를 선택하세요" });
+    options.includeComments = commentOption === "주석 포함";
 
     return options;
   }
@@ -131,7 +137,7 @@ class AdvancedSearchProvider {
       editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
       
       // 사이드바 뷰 업데이트
-      this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery);
+      this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery, this.searchOptions);
     } catch (error) {
       vscode.window.showErrorMessage(`파일을 열 수 없습니다: ${match.uri.fsPath}`);
     }
@@ -173,8 +179,8 @@ export function activate(context: vscode.ExtensionContext) {
     searchProvider['viewProvider']
   );
 
-  const searchCommand = vscode.commands.registerCommand("advSearch.searchIgnoreComments", (query) => 
-    searchProvider.searchIgnoreComments(query)
+  const searchCommand = vscode.commands.registerCommand("advSearch.searchIgnoreComments", (query, options) =>
+    searchProvider.searchIgnoreComments(query, options)
   );
   
   const nextMatchCommand = vscode.commands.registerCommand("advSearch.nextMatch", () => 
