@@ -1,11 +1,13 @@
 import * as vscode from "vscode";
+import * as iconv from "iconv-lite";
+import * as jschardet from "jschardet";
 
 export interface SearchMatch {
   uri: vscode.Uri;
   line: number;
   column: number;
   snippet: string;
-  fullText: string;
+  lineText: string;
   matchLength: number;
   isComment: boolean;
 }
@@ -31,7 +33,20 @@ export class SearchEngine {
   ): Promise<void> {
     try {
       const raw = await vscode.workspace.fs.readFile(uri);
-      let text = new TextDecoder("utf8").decode(raw);
+      const buffer = Buffer.from(raw);
+
+      // 인코딩 자동 감지
+      let encoding = 'utf-8';
+      try {
+        const detected = jschardet.detect(buffer);
+        if (detected && detected.encoding) {
+          encoding = detected.encoding.toLowerCase();
+        }
+      } catch {}
+
+      let text = encoding === 'utf-8' || encoding === 'ascii'
+        ? buffer.toString('utf8')
+        : iconv.decode(buffer, encoding);
 
       // 한글 등 유니코드 문자열 처리를 위해 NFC 정규화
       text = text.normalize('NFC');
@@ -88,13 +103,16 @@ export class SearchEngine {
             const snippet = eol === -1
               ? text.slice(i, i + 50)
               : text.slice(i, Math.min(eol, i + 50));
+            const lineStart = text.lastIndexOf("\n", i) + 1;
+            const lineEnd = eol === -1 ? text.length : eol;
+            const lineText = text.slice(lineStart, lineEnd);
 
             emit({
               uri,
               line,
               column,
               snippet: snippet.trim(),
-              fullText: text,
+              lineText,
               matchLength: needle.length,
               isComment: true
             });
@@ -115,12 +133,16 @@ export class SearchEngine {
               ? text.slice(i, i + 50)
               : text.slice(i, Math.min(eol, i + 50));
 
+            const lineStart = text.lastIndexOf("\n", i) + 1;
+            const lineEnd = eol === -1 ? text.length : eol;
+            const lineText = text.slice(lineStart, lineEnd);
+
             emit({
               uri,
               line,
               column,
               snippet: snippet.trim(),
-              fullText: text,
+              lineText,
               matchLength: needle.length,
               isComment: true
             });
@@ -169,16 +191,19 @@ export class SearchEngine {
           // 매치 검사
           if (this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
-            const snippet = eol === -1 
-              ? text.slice(i, i + 50) 
+            const snippet = eol === -1
+              ? text.slice(i, i + 50)
               : text.slice(i, Math.min(eol, i + 50));
-            
+            const lineStart = text.lastIndexOf("\n", i) + 1;
+            const lineEnd = eol === -1 ? text.length : eol;
+            const lineText = text.slice(lineStart, lineEnd);
+
             emit({
               uri,
               line,
               column,
               snippet: snippet.trim(),
-              fullText: text,
+              lineText,
               matchLength: needle.length,
               isComment: ["line", "block"].includes(mode)
             });
@@ -233,13 +258,16 @@ export class SearchEngine {
                 const snippet = eol === -1
                   ? text.slice(i, i + 50)
                   : text.slice(i, Math.min(eol, i + 50));
+                const lineStart = text.lastIndexOf("\n", i) + 1;
+                const lineEnd = eol === -1 ? text.length : eol;
+                const lineText = text.slice(lineStart, lineEnd);
 
                 emit({
                   uri,
                   line,
                   column,
                   snippet: snippet.trim(),
-                  fullText: text,
+                  lineText,
                   matchLength: match[0].length,
                   isComment: true
                 });
@@ -263,12 +291,16 @@ export class SearchEngine {
                   ? text.slice(i, i + 50)
                   : text.slice(i, Math.min(eol, i + 50));
 
+                const lineStart = text.lastIndexOf("\n", i) + 1;
+                const lineEnd = eol === -1 ? text.length : eol;
+                const lineText = text.slice(lineStart, lineEnd);
+
                 emit({
                   uri,
                   line,
                   column,
                   snippet: snippet.trim(),
-                  fullText: text,
+                  lineText,
                   matchLength: match[0].length,
                   isComment: true
                 });
@@ -320,16 +352,19 @@ export class SearchEngine {
             const match = regex.exec(remainingText);
             if (match && match.index === 0) {
               const eol = text.indexOf("\n", i);
-              const snippet = eol === -1 
-                ? text.slice(i, i + 50) 
+              const snippet = eol === -1
+                ? text.slice(i, i + 50)
                 : text.slice(i, Math.min(eol, i + 50));
-              
+              const lineStart = text.lastIndexOf("\n", i) + 1;
+              const lineEnd = eol === -1 ? text.length : eol;
+              const lineText = text.slice(lineStart, lineEnd);
+
               emit({
                 uri,
                 line,
                 column,
                 snippet: snippet.trim(),
-                fullText: text,
+                lineText,
                 matchLength: match[0].length,
                 isComment: ["line", "block"].includes(mode)
               });

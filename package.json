@@ -97,9 +97,13 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
   },
+  "dependencies": {
+    "iconv-lite": "^0.6.3",
+    "jschardet": "^3.1.4"
+  },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
     "@types/node": "16.x",
     "typescript": "^4.9.4"
   }
-} 
+}
