@@ -13,15 +13,35 @@
     "onCommand:advSearch.searchIgnoreComments",
     "onCommand:advSearch.nextMatch",
     "onCommand:advSearch.prevMatch",
-    "onCommand:advSearch.toggleSearchPanel"
+    "onCommand:advSearch.clearResults",
+    "onView:advSearch.searchResults"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "advSearch",
+          "title": "Advanced Search",
+          "icon": "resources/search-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "advSearch": [
+        {
+          "id": "advSearch.searchResults",
+          "name": "검색 결과",
+          "when": "true"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "advSearch.searchIgnoreComments",
         "title": "주석 제외 검색",
-        "category": "Advanced Search"
+        "category": "Advanced Search",
+        "icon": "$(search)"
       },
       {
         "command": "advSearch.nextMatch",
@@ -34,15 +54,15 @@
         "category": "Advanced Search"
       },
       {
-        "command": "advSearch.toggleSearchPanel",
-        "title": "검색 패널 토글",
+        "command": "advSearch.clearResults",
+        "title": "검색 결과 지우기",
         "category": "Advanced Search"
       }
     ],
     "keybindings": [
       {
         "command": "advSearch.searchIgnoreComments",
-        "key": "ctrl+shift+f",
+        "key": "ctrl+shift+alt+f",
         "when": "editorTextFocus"
       },
       {
@@ -54,13 +74,22 @@
         "command": "advSearch.prevMatch",
         "key": "shift+f3",
         "when": "editorTextFocus"
-      },
-      {
-        "command": "advSearch.toggleSearchPanel",
-        "key": "ctrl+shift+p",
-        "when": "editorTextFocus"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "advSearch.searchIgnoreComments",
+          "when": "view == advSearch.searchResults",
+          "group": "navigation"
+        },
+        {
+          "command": "advSearch.clearResults",
+          "when": "view == advSearch.searchResults",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
