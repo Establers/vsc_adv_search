@@ -100,12 +100,10 @@ export class SearchEngine {
         case "line":
           if (options.includeComments && this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
-            const snippet = eol === -1
-              ? text.slice(i, i + 50)
-              : text.slice(i, Math.min(eol, i + 50));
             const lineStart = text.lastIndexOf("\n", i) + 1;
             const lineEnd = eol === -1 ? text.length : eol;
             const lineText = text.slice(lineStart, lineEnd);
+            const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
 
             emit({
               uri,
@@ -129,13 +127,10 @@ export class SearchEngine {
           }
           if (options.includeComments && this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
-            const snippet = eol === -1
-              ? text.slice(i, i + 50)
-              : text.slice(i, Math.min(eol, i + 50));
-
             const lineStart = text.lastIndexOf("\n", i) + 1;
             const lineEnd = eol === -1 ? text.length : eol;
             const lineText = text.slice(lineStart, lineEnd);
+            const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
 
             emit({
               uri,
@@ -191,12 +186,10 @@ export class SearchEngine {
           // 매치 검사
           if (this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
-            const snippet = eol === -1
-              ? text.slice(i, i + 50)
-              : text.slice(i, Math.min(eol, i + 50));
             const lineStart = text.lastIndexOf("\n", i) + 1;
             const lineEnd = eol === -1 ? text.length : eol;
             const lineText = text.slice(lineStart, lineEnd);
+            const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
 
             emit({
               uri,
@@ -255,12 +248,10 @@ export class SearchEngine {
               const match = regex.exec(text.slice(i));
               if (match && match.index === 0) {
                 const eol = text.indexOf("\n", i);
-                const snippet = eol === -1
-                  ? text.slice(i, i + 50)
-                  : text.slice(i, Math.min(eol, i + 50));
                 const lineStart = text.lastIndexOf("\n", i) + 1;
                 const lineEnd = eol === -1 ? text.length : eol;
                 const lineText = text.slice(lineStart, lineEnd);
+                const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
 
                 emit({
                   uri,
@@ -287,13 +278,10 @@ export class SearchEngine {
               const match = regex.exec(text.slice(i));
               if (match && match.index === 0) {
                 const eol = text.indexOf("\n", i);
-                const snippet = eol === -1
-                  ? text.slice(i, i + 50)
-                  : text.slice(i, Math.min(eol, i + 50));
-
                 const lineStart = text.lastIndexOf("\n", i) + 1;
                 const lineEnd = eol === -1 ? text.length : eol;
                 const lineText = text.slice(lineStart, lineEnd);
+                const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
 
                 emit({
                   uri,
@@ -352,12 +340,10 @@ export class SearchEngine {
             const match = regex.exec(remainingText);
             if (match && match.index === 0) {
               const eol = text.indexOf("\n", i);
-              const snippet = eol === -1
-                ? text.slice(i, i + 50)
-                : text.slice(i, Math.min(eol, i + 50));
               const lineStart = text.lastIndexOf("\n", i) + 1;
               const lineEnd = eol === -1 ? text.length : eol;
               const lineText = text.slice(lineStart, lineEnd);
+              const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
 
               emit({
                 uri,

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { SearchMatch, SearchOptions } from "./searchEngine";
 
 export class SearchViewProvider implements vscode.WebviewViewProvider {
@@ -67,8 +68,9 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebview(webview: vscode.Webview): string {
     const results = this._searchResults.map((match, index) => {
-      const fileName = match.uri.fsPath.split(/[\\/]/).pop() || '';
+      const fileName = path.basename(match.uri.fsPath);
       const relativePath = vscode.workspace.asRelativePath(match.uri);
+      const dirPath = path.dirname(relativePath);
       const isCurrent = index === this._currentMatchIndex;
       const commentClass = match.isComment ? 'comment' : '';
 
@@ -76,14 +78,13 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
       const lineText = match.lineText;
 
       return `
-        <div class="result-item ${isCurrent ? 'current-match' : ''} ${commentClass}" data-index="${index}" title="${this._escapeHtml(lineText)}">
+        <div class="result-item ${isCurrent ? 'current-match' : ''} ${commentClass}" data-index="${index}" title="${this._escapeHtml(lineText)}" ondblclick="goToMatch(${index})">
           <span class="file-info">
             <span class="file-name">${fileName}</span>
-            <span class="file-path">${relativePath}</span>
+            <span class="file-path">${dirPath}</span>
             <span class="line-number">${match.line}:${match.column}</span>
           </span>
           <span class="snippet">${this._escapeHtml(match.snippet)}</span>
-          <button class="go-to-btn" onclick="goToMatch(${index})">이동</button>
         </div>
       `;
     }).join('');
@@ -241,19 +242,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             font-style: italic;
           }
           
-          .go-to-btn {
-            padding: 3px 6px;
-            border: 1px solid var(--vscode-button-border);
-            background: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            cursor: pointer;
-            border-radius: 2px;
-            font-size: 10px;
-          }
-          
-          .go-to-btn:hover {
-            background: var(--vscode-button-hoverBackground);
-          }
           
           .no-results {
             text-align: center;
