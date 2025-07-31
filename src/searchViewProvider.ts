@@ -70,15 +70,16 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
       const fileName = match.uri.fsPath.split(/[\\/]/).pop() || '';
       const relativePath = vscode.workspace.asRelativePath(match.uri);
       const isCurrent = index === this._currentMatchIndex;
-      
+      const commentClass = match.isComment ? 'comment' : '';
+
       return `
-        <div class="result-item ${isCurrent ? 'current-match' : ''}" data-index="${index}">
-          <div class="file-info">
+        <div class="result-item ${isCurrent ? 'current-match' : ''} ${commentClass}" data-index="${index}">
+          <span class="file-info">
             <span class="file-name">${fileName}</span>
             <span class="file-path">${relativePath}</span>
             <span class="line-number">${match.line}:${match.column}</span>
-          </div>
-          <div class="snippet">${this._escapeHtml(match.snippet)}</div>
+          </span>
+          <span class="snippet">${this._escapeHtml(match.snippet)}</span>
           <button class="go-to-btn" onclick="goToMatch(${index})">이동</button>
         </div>
       `;
@@ -177,8 +178,11 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           }
           
           .result-item {
-            margin-bottom: 10px;
-            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            padding: 4px 8px;
             border: 1px solid var(--vscode-panel-border);
             border-radius: 4px;
             background: var(--vscode-editor-background);
@@ -197,8 +201,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           .file-info {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 5px;
+            gap: 4px;
             font-size: 11px;
           }
           
@@ -222,14 +225,17 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           
           .snippet {
             font-family: 'Consolas', 'Monaco', monospace;
-            background: var(--vscode-textBlockQuote-background);
-            padding: 6px;
-            border-radius: 3px;
-            margin: 5px 0;
-            white-space: pre-wrap;
-            word-break: break-all;
+            white-space: pre;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
             font-size: 11px;
             line-height: 1.3;
+          }
+
+          .result-item.comment .snippet {
+            opacity: 0.7;
+            font-style: italic;
           }
           
           .go-to-btn {
