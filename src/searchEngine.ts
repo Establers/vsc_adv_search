@@ -7,6 +7,7 @@ export interface SearchMatch {
   snippet: string;
   fullText: string;
   matchLength: number;
+  isComment: boolean;
 }
 
 export interface SearchOptions {
@@ -78,17 +79,50 @@ export class SearchEngine {
 
       switch (mode) {
         case "line":
+          if (options.includeComments && this.isMatch(text, i, searchText, options)) {
+            const eol = text.indexOf("\n", i);
+            const snippet = eol === -1
+              ? text.slice(i, i + 50)
+              : text.slice(i, Math.min(eol, i + 50));
+
+            emit({
+              uri,
+              line,
+              column,
+              snippet: snippet.trim(),
+              fullText: text,
+              matchLength: needle.length,
+              isComment: true
+            });
+          }
           i++;
+          column++;
           continue;
         case "block":
           if (ch === "*" && next === "/") {
             mode = "code";
             i += 2;
             column += 2;
-          } else {
-            i++;
-            column++;
+            continue;
           }
+          if (options.includeComments && this.isMatch(text, i, searchText, options)) {
+            const eol = text.indexOf("\n", i);
+            const snippet = eol === -1
+              ? text.slice(i, i + 50)
+              : text.slice(i, Math.min(eol, i + 50));
+
+            emit({
+              uri,
+              line,
+              column,
+              snippet: snippet.trim(),
+              fullText: text,
+              matchLength: needle.length,
+              isComment: true
+            });
+          }
+          i++;
+          column++;
           continue;
         case "str":
           if (!esc && ch === '"') mode = "code";
@@ -103,13 +137,13 @@ export class SearchEngine {
           column++;
           continue;
         default: // code
-          if (!options.includeComments && ch === "/" && next === "/") {
+          if (ch === "/" && next === "/") {
             mode = "line";
             i += 2;
             column += 2;
             continue;
           }
-          if (!options.includeComments && ch === "/" && next === "*") {
+          if (ch === "/" && next === "*") {
             mode = "block";
             i += 2;
             column += 2;
@@ -141,7 +175,8 @@ export class SearchEngine {
               column,
               snippet: snippet.trim(),
               fullText: text,
-              matchLength: needle.length
+              matchLength: needle.length,
+              isComment: ["line", "block"].includes(mode)
             });
           }
           i++;
@@ -187,17 +222,56 @@ export class SearchEngine {
 
         switch (mode) {
           case "line":
+            if (options.includeComments) {
+              const match = regex.exec(text.slice(i));
+              if (match && match.index === 0) {
+                const eol = text.indexOf("\n", i);
+                const snippet = eol === -1
+                  ? text.slice(i, i + 50)
+                  : text.slice(i, Math.min(eol, i + 50));
+
+                emit({
+                  uri,
+                  line,
+                  column,
+                  snippet: snippet.trim(),
+                  fullText: text,
+                  matchLength: match[0].length,
+                  isComment: true
+                });
+              }
+            }
             i++;
+            column++;
             continue;
           case "block":
             if (ch === "*" && next === "/") {
               mode = "code";
               i += 2;
               column += 2;
-            } else {
-              i++;
-              column++;
+              continue;
             }
+            if (options.includeComments) {
+              const match = regex.exec(text.slice(i));
+              if (match && match.index === 0) {
+                const eol = text.indexOf("\n", i);
+                const snippet = eol === -1
+                  ? text.slice(i, i + 50)
+                  : text.slice(i, Math.min(eol, i + 50));
+
+                emit({
+                  uri,
+                  line,
+                  column,
+                  snippet: snippet.trim(),
+                  fullText: text,
+                  matchLength: match[0].length,
+                  isComment: true
+                });
+              }
+            }
+            i++;
+            column++;
             continue;
           case "str":
             if (!esc && ch === '"') mode = "code";
@@ -212,13 +286,13 @@ export class SearchEngine {
             column++;
             continue;
           default: // code
-            if (!options.includeComments && ch === "/" && next === "/") {
+            if (ch === "/" && next === "/") {
               mode = "line";
               i += 2;
               column += 2;
               continue;
             }
-            if (!options.includeComments && ch === "/" && next === "*") {
+            if (ch === "/" && next === "*") {
               mode = "block";
               i += 2;
               column += 2;
@@ -252,7 +326,8 @@ export class SearchEngine {
                 column,
                 snippet: snippet.trim(),
                 fullText: text,
-                matchLength: match[0].length
+                matchLength: match[0].length,
+                isComment: ["line", "block"].includes(mode)
               });
             }
             i++;
