@@ -262,6 +262,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           <label><input type="checkbox" id="wholeWord" ${this._searchOptions.wholeWord ? 'checked' : ''}>전체 단어</label>
           <label><input type="checkbox" id="regex" ${this._searchOptions.regex ? 'checked' : ''}>정규식</label>
           <label><input type="checkbox" id="includeComments" ${this._searchOptions.includeComments ? 'checked' : ''}>주석 포함</label>
+          <label><input type="checkbox" id="commentsOnly" ${this._searchOptions.commentsOnly ? 'checked' : ''}>주석만</label>
         </div>
         <div class="search-info">
             ${this._searchQuery ? `"${this._escapeHtml(this._searchQuery)}" - ${this._searchResults.length}개 결과` : '검색어를 입력하고 검색 버튼을 클릭하세요'}
@@ -287,7 +288,8 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
               caseSensitive: document.getElementById('caseSensitive').checked,
               wholeWord: document.getElementById('wholeWord').checked,
               regex: document.getElementById('regex').checked,
-              includeComments: document.getElementById('includeComments').checked
+              includeComments: document.getElementById('includeComments').checked,
+              commentsOnly: document.getElementById('commentsOnly').checked
             };
             vscode.postMessage({
               type: 'search',
@@ -319,6 +321,18 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           document.getElementById('searchInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
               performSearch();
+            }
+          });
+
+          document.getElementById('includeComments').addEventListener('change', (e) => {
+            if (e.target.checked) {
+              document.getElementById('commentsOnly').checked = false;
+            }
+          });
+
+          document.getElementById('commentsOnly').addEventListener('change', (e) => {
+            if (e.target.checked) {
+              document.getElementById('includeComments').checked = false;
             }
           });
         </script>

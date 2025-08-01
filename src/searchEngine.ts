@@ -17,6 +17,7 @@ export interface SearchOptions {
   wholeWord?: boolean;
   regex?: boolean;
   includeComments?: boolean;
+  commentsOnly?: boolean;
   includePattern?: string;
   excludePattern?: string;
 }
@@ -98,7 +99,8 @@ export class SearchEngine {
 
       switch (mode) {
         case "line":
-          if (options.includeComments && this.isMatch(text, i, searchText, options)) {
+          if ((options.includeComments || options.commentsOnly) &&
+              this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
             const lineStart = text.lastIndexOf("\n", i) + 1;
             const lineEnd = eol === -1 ? text.length : eol;
@@ -125,7 +127,8 @@ export class SearchEngine {
             column += 2;
             continue;
           }
-          if (options.includeComments && this.isMatch(text, i, searchText, options)) {
+          if ((options.includeComments || options.commentsOnly) &&
+              this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
             const lineStart = text.lastIndexOf("\n", i) + 1;
             const lineEnd = eol === -1 ? text.length : eol;
@@ -184,7 +187,7 @@ export class SearchEngine {
           }
           
           // 매치 검사
-          if (this.isMatch(text, i, searchText, options)) {
+          if (!options.commentsOnly && this.isMatch(text, i, searchText, options)) {
             const eol = text.indexOf("\n", i);
             const lineStart = text.lastIndexOf("\n", i) + 1;
             const lineEnd = eol === -1 ? text.length : eol;
@@ -244,7 +247,7 @@ export class SearchEngine {
 
         switch (mode) {
           case "line":
-            if (options.includeComments) {
+            if (options.includeComments || options.commentsOnly) {
               const match = regex.exec(text.slice(i));
               if (match && match.index === 0) {
                 const eol = text.indexOf("\n", i);
@@ -274,7 +277,7 @@ export class SearchEngine {
               column += 2;
               continue;
             }
-            if (options.includeComments) {
+            if (options.includeComments || options.commentsOnly) {
               const match = regex.exec(text.slice(i));
               if (match && match.index === 0) {
                 const eol = text.indexOf("\n", i);
@@ -338,7 +341,7 @@ export class SearchEngine {
             // 정규식 매치 검사
             const remainingText = text.slice(i);
             const match = regex.exec(remainingText);
-            if (match && match.index === 0) {
+            if (!options.commentsOnly && match && match.index === 0) {
               const eol = text.indexOf("\n", i);
               const lineStart = text.lastIndexOf("\n", i) + 1;
               const lineEnd = eol === -1 ? text.length : eol;

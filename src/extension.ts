@@ -46,7 +46,9 @@ class AdvancedSearchProvider {
 
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: this.searchOptions.includeComments ? "주석 포함 검색 중..." : "주석 제외 검색 중...",
+      title: this.searchOptions.commentsOnly
+        ? "주석만 검색 중..."
+        : (this.searchOptions.includeComments ? "주석 포함 검색 중..." : "주석 제외 검색 중..."),
       cancellable: true
     }, async (progress, token) => {
       const limit = this.pLimit(8);
@@ -97,9 +99,11 @@ class AdvancedSearchProvider {
 
     const commentOption = await vscode.window.showQuickPick([
       "주석 제외",
-      "주석 포함"
-    ], { placeHolder: "주석 포함 여부를 선택하세요" });
+      "주석 포함",
+      "주석만"
+    ], { placeHolder: "주석 처리 옵션을 선택하세요" });
     options.includeComments = commentOption === "주석 포함";
+    options.commentsOnly = commentOption === "주석만";
 
     return options;
   }
