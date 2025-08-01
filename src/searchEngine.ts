@@ -5,6 +5,19 @@ import AhoCorasick from "aho-corasick";
 import { execFile } from "child_process";
 import * as path from "path";
 
+function execRipgrep(args: string[], cwd: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile("rg", args, { cwd }, (err, out) => {
+      if (err) {
+        // ripgrep returns code 1 when no matches are found
+        if ((err as any).code === 1) return resolve("");
+        return reject(err);
+      }
+      resolve(out.toString());
+    });
+  });
+}
+
 export interface SearchMatch {
   uri: vscode.Uri;
   line: number;
@@ -32,6 +45,7 @@ export class SearchEngine {
   public static async findCandidateFiles(query: string, options: SearchOptions = {}): Promise<vscode.Uri[]> {
     const folders = vscode.workspace.workspaceFolders || [];
     const results: vscode.Uri[] = [];
+    let rgFailed = false;
 
     for (const folder of folders) {
       const cwd = folder.uri.fsPath;
@@ -47,20 +61,22 @@ export class SearchEngine {
       }
 
       try {
-        const stdout: string = await new Promise((resolve, reject) => {
-          execFile("rg", args, { cwd }, (err, out) => {
-            if (err && (err as any).code !== 1) {
-              return resolve("");
-            }
-            resolve(out.toString());
-          });
-        });
-
+        const stdout: string = await execRipgrep(args, cwd);
         const files = stdout.split(/\r?\n/).filter(Boolean).map(f => vscode.Uri.file(path.join(cwd, f)));
         results.push(...files);
-      } catch {
-        // ignore errors
+      } catch (err: any) {
+        if (err.code === 'ENOENT') {
+          rgFailed = true;
+        } else {
+          console.error('ripgrep error', err);
+        }
       }
+    }
+
+    if (rgFailed) {
+      vscode.window.showWarningMessage('ripgrep (rg) 실행 파일을 찾을 수 없어 VSCode 기본 검색으로 대체합니다.');
+      const fallback = await vscode.workspace.findFiles('**/*.{c,h}');
+      return fallback;
     }
 
     return results;
