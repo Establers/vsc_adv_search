@@ -36,7 +36,7 @@ export class AdvancedSearchProvider {
     this.searchResults = [];
     this.currentMatchIndex = -1;
 
-    const files = await SearchEngine.findCandidateFiles(query!, this.searchOptions);
+    const files = await vscode.workspace.findFiles("**/*.{js,ts,jsx,tsx,c,cpp,h,hpp,java,py,cs,php,rb,go,rs,swift,kt}");
     const filteredFiles = files.filter(uri => SearchEngine.shouldIncludeFile(uri, this.searchOptions));
 
     if (filteredFiles.length === 0) {
