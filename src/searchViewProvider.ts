@@ -68,24 +68,43 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview): string {
-    const results = this._searchResults.map((match, index) => {
-      const fileName = path.basename(match.uri.fsPath);
-      const relativePath = vscode.workspace.asRelativePath(match.uri);
-      const dirPath = path.dirname(relativePath);
-      const isCurrent = index === this._currentMatchIndex;
-      const commentClass = match.isComment ? 'comment' : '';
+    const grouped: { [key: string]: { match: SearchMatch; index: number }[] } = {};
+    this._searchResults.forEach((m, i) => {
+      const key = m.uri.fsPath;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push({ match: m, index: i });
+    });
 
-      // 미리보기용 전체 라인 추출
-      const lineText = match.lineText;
+    const results = Object.entries(grouped).map(([fsPath, items], gIdx) => {
+      const fileName = path.basename(fsPath);
+      const relativePath = vscode.workspace.asRelativePath(fsPath);
+      const dirPath = path.dirname(relativePath);
+      const groupId = `group-${gIdx}`;
+
+      const itemsHtml = items
+        .map(({ match, index }) => {
+          const isCurrent = index === this._currentMatchIndex;
+          const commentClass = match.isComment ? 'comment' : '';
+          const lineText = match.lineText;
+          return `
+            <div class="result-item ${isCurrent ? 'current-match' : ''} ${commentClass}" data-index="${index}" title="${this._escapeHtml(lineText)}" ondblclick="goToMatch(${index})">
+              <span class="line-number">${match.line}:${match.column}</span>
+              <span class="snippet">${this._escapeHtml(match.snippet)}</span>
+            </div>
+          `;
+        })
+        .join('');
 
       return `
-        <div class="result-item ${isCurrent ? 'current-match' : ''} ${commentClass}" data-index="${index}" title="${this._escapeHtml(lineText)}" ondblclick="goToMatch(${index})">
-          <span class="file-info">
+        <div class="file-group">
+          <div class="file-header" onclick="toggleGroup('${groupId}', this)">
+            <span class="toggle"></span>
             <span class="file-name">${fileName}</span>
             <span class="file-path">${dirPath}</span>
-            <span class="line-number">${match.line}:${match.column}</span>
-          </span>
-          <span class="snippet">${this._escapeHtml(match.snippet)}</span>
+          </div>
+          <div class="file-results" id="${groupId}">
+            ${itemsHtml}
+          </div>
         </div>
       `;
     }).join('');
@@ -187,18 +206,40 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             background: var(--vscode-list-activeSelectionBackground);
           }
           
-          .file-info {
+          .file-group {
+            margin-bottom: 10px;
+          }
+
+          .file-header {
             display: flex;
             align-items: center;
             gap: 4px;
+            cursor: pointer;
             font-size: 11px;
+            padding: 2px 4px;
+            user-select: none;
           }
-          
+
+          .file-header .toggle::before {
+            content: '▼';
+            display: inline-block;
+            width: 10px;
+          }
+
+          .file-header.collapsed .toggle::before {
+            content: '▶';
+          }
+
+          .file-results {
+            margin-left: 12px;
+            margin-top: 4px;
+          }
+
           .file-name {
             font-weight: bold;
             color: var(--vscode-textLink-foreground);
           }
-          
+
           .file-path {
             color: var(--vscode-descriptionForeground);
             font-size: 10px;
@@ -293,6 +334,20 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
 
           function loadMore() {
             vscode.postMessage({ type: 'loadMore' });
+          }
+
+          function toggleGroup(id, header) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const collapsed = el.style.display === 'none';
+            el.style.display = collapsed ? 'block' : 'none';
+            if (header) {
+              if (collapsed) {
+                header.classList.remove('collapsed');
+              } else {
+                header.classList.add('collapsed');
+              }
+            }
           }
           
           
