@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { promises as fs } from "fs";
 import * as iconv from "iconv-lite";
 import * as jschardet from "jschardet";
 import AhoCorasick from "aho-corasick";
@@ -37,7 +38,7 @@ export class SearchEngine {
     emit: (match: SearchMatch) => void
   ): Promise<void> {
     try {
-      const raw = await vscode.workspace.fs.readFile(uri);
+      const raw = await fs.readFile(uri.fsPath);
       const buffer = Buffer.from(raw);
 
       // 인코딩 자동 감지
