@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { SearchEngine, SearchMatch } from "./searchEngine";
 import { SearchViewProvider } from "./searchViewProvider";
 
-class AdvancedSearchProvider {
+export class AdvancedSearchProvider {
   private static instance: AdvancedSearchProvider;
   private searchResults: SearchMatch[] = [];
   private currentMatchIndex: number = -1;
@@ -117,11 +117,16 @@ class AdvancedSearchProvider {
 
   prevMatch() {
     if (this.searchResults.length === 0) return;
-    
-    this.currentMatchIndex = this.currentMatchIndex <= 0 
-      ? this.searchResults.length - 1 
+
+    this.currentMatchIndex = this.currentMatchIndex <= 0
+      ? this.searchResults.length - 1
       : this.currentMatchIndex - 1;
     this.goToMatch(this.currentMatchIndex);
+  }
+
+  setCurrentMatchIndex(index: number) {
+    if (index < 0 || index >= this.searchResults.length) return;
+    this.currentMatchIndex = index;
   }
 
   async goToMatch(index: number) {
@@ -139,9 +144,9 @@ class AdvancedSearchProvider {
       
       editor.selection = new vscode.Selection(position, position.translate(0, match.matchLength));
       editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-      
-      // 사이드바 뷰 업데이트
-      this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery, this.searchOptions);
+
+      // 현재 매치 하이라이트
+      this.viewProvider.highlightMatch(index);
     } catch (error) {
       vscode.window.showErrorMessage(`파일을 열 수 없습니다: ${match.uri.fsPath}`);
     }
