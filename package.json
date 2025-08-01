@@ -18,6 +18,22 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Advanced Search",
+      "properties": {
+        "advSearch.fileGlob": {
+          "type": "string",
+          "default": "*.{c,cpp,h,hpp,js,ts}",
+          "description": "Glob pattern for files to search"
+        },
+        "advSearch.maxResults": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum number of search results to display"
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -59,6 +75,12 @@
         "title": "검색 결과 지우기",
         "category": "Advanced Search"
       }
+      ,
+      {
+        "command": "advSearch.loadMoreResults",
+        "title": "더 많은 결과 불러오기",
+        "category": "Advanced Search"
+      }
     ],
     "keybindings": [
       {
@@ -86,6 +108,11 @@
         },
         {
           "command": "advSearch.clearResults",
+          "when": "view == advSearch.searchResults",
+          "group": "navigation"
+        },
+        {
+          "command": "advSearch.loadMoreResults",
           "when": "view == advSearch.searchResults",
           "group": "navigation"
         }

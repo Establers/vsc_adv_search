@@ -28,7 +28,9 @@ export class SearchEngine {
 
   public static async findCandidateFiles(_query: string, _options: SearchOptions = {}): Promise<vscode.Uri[]> {
     const vscode = require('vscode') as typeof import('vscode');
-    const includeGlob = `**/${this.FILE_GLOB}`;
+    const config = vscode.workspace.getConfiguration('advSearch');
+    const glob = config.get<string>('fileGlob', SearchEngine.FILE_GLOB);
+    const includeGlob = `**/${glob}`;
 
     // use stable API to retrieve candidate files
     const files = await vscode.workspace.findFiles(includeGlob);
