@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import * as os from "os";
+import * as path from "path";
+import { Worker } from "worker_threads";
 import { SearchEngine, SearchMatch } from "./searchEngine";
 import { SearchViewProvider } from "./searchViewProvider";
 
@@ -54,9 +56,11 @@ export class AdvancedSearchProvider {
     }, async (progress, token) => {
       const concurrency = os.cpus().length || 4;
       const limit = this.pLimit(concurrency);
-      const promises = filteredFiles.map((uri, index) => 
-        limit(() => SearchEngine.searchFile(uri, query!, this.searchOptions, (match: SearchMatch) => {
-          this.searchResults.push(match);
+      const workerPath = path.join(__dirname, 'searchWorker.js');
+
+      const promises = filteredFiles.map(uri =>
+        limit(() => this.runWorker(workerPath, uri, query!, this.searchOptions).then(matches => {
+          this.searchResults.push(...matches);
         }))
       );
 
@@ -177,6 +181,25 @@ export class AdvancedSearchProvider {
       };
 
       active < max ? run() : queue.push(run);
+    });
+  }
+
+  private runWorker(workerPath: string, uri: vscode.Uri, query: string, options: any): Promise<SearchMatch[]> {
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(workerPath, { workerData: { uri: uri.toString(), query, options } });
+      worker.on('message', (matches: any[]) => {
+        const parsed = matches.map(m => ({
+          ...m,
+          uri: vscode.Uri.parse(m.uri)
+        }));
+        resolve(parsed);
+      });
+      worker.on('error', reject);
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Worker stopped with exit code ${code}`));
+        }
+      });
     });
   }
 }
