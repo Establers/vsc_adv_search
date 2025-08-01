@@ -32,12 +32,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
         case 'goToMatch':
           this._goToMatch(data.index);
           break;
-        case 'nextMatch':
-          this._nextMatch();
-          break;
-        case 'prevMatch':
-          this._prevMatch();
-          break;
         case 'search':
           this._performSearch(data.query, data.options);
           break;
@@ -124,6 +118,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             gap: 8px;
             margin-bottom: 10px;
             font-size: 11px;
+            flex-wrap: wrap;
           }
 
 
@@ -131,6 +126,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             display: flex;
             align-items: center;
             gap: 4px;
+            white-space: nowrap;
           }
           
           .search-input {
@@ -163,25 +159,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             margin-bottom: 10px;
           }
           
-          .controls {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
-          }
-          
-          .control-btn {
-            padding: 4px 8px;
-            border: 1px solid var(--vscode-button-border);
-            background: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            cursor: pointer;
-            border-radius: 3px;
-            font-size: 11px;
-          }
-          
-          .control-btn:hover {
-            background: var(--vscode-button-hoverBackground);
-          }
           
           .result-item {
             display: flex;
@@ -251,6 +228,12 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             font-style: italic;
             padding: 20px;
           }
+
+          .welcome-message {
+            text-align: center;
+            color: var(--vscode-descriptionForeground);
+            padding: 20px;
+          }
         </style>
       </head>
       <body>
@@ -269,16 +252,10 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
         <div class="search-info">
             ${this._searchQuery ? `"${this._escapeHtml(this._searchQuery)}" - ${this._searchResults.length}개 결과` : '검색어를 입력하고 검색 버튼을 클릭하세요'}
           </div>
-          ${this._searchResults.length > 0 ? `
-            <div class="controls">
-              <button class="control-btn" onclick="prevMatch()">이전</button>
-              <button class="control-btn" onclick="nextMatch()">다음</button>
-            </div>
-          ` : ''}
         </div>
         
         <div id="results">
-          ${this._searchResults.length > 0 ? results : '<div class="no-results">검색 결과가 없습니다</div>'}
+          ${this._searchResults.length > 0 ? results : (this._searchQuery ? '<div class="no-results">검색 결과가 없습니다</div>' : '<div class="welcome-message">Advanced Search 패널입니다.<br>검색어를 입력하고 검색 버튼을 클릭하세요.</div>')}
         </div>
         
         <script>
@@ -307,17 +284,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             });
           }
           
-          function nextMatch() {
-            vscode.postMessage({
-              type: 'nextMatch'
-            });
-          }
-          
-          function prevMatch() {
-            vscode.postMessage({
-              type: 'prevMatch'
-            });
-          }
           
           // Enter 키로 검색 실행
           document.getElementById('searchInput').addEventListener('keydown', (e) => {
@@ -375,21 +341,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private _nextMatch(): void {
-    if (this._searchResults.length === 0) return;
-    
-    this._currentMatchIndex = (this._currentMatchIndex + 1) % this._searchResults.length;
-    this._goToMatch(this._currentMatchIndex);
-  }
-
-  private _prevMatch(): void {
-    if (this._searchResults.length === 0) return;
-    
-    this._currentMatchIndex = this._currentMatchIndex <= 0 
-      ? this._searchResults.length - 1 
-      : this._currentMatchIndex - 1;
-    this._goToMatch(this._currentMatchIndex);
-  }
 
   private async _performSearch(query: string, options: SearchOptions): Promise<void> {
     if (!query.trim()) return;
