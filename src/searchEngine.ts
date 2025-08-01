@@ -28,34 +28,13 @@ export class SearchEngine {
 
   public static readonly FILE_GLOB = "*.{c,cpp,h,hpp,js,ts}";
 
-  public static async findCandidateFiles(query: string, options: SearchOptions = {}): Promise<vscode.Uri[]> {
-    const found = new Set<string>();
+  public static async findCandidateFiles(_query: string, options: SearchOptions = {}): Promise<vscode.Uri[]> {
+    const includeGlob = options.includePattern ? options.includePattern : `**/${this.FILE_GLOB}`;
+    const excludeGlob = options.excludePattern;
 
-    const searchQuery: any = {
-      pattern: query,
-      isCaseSensitive: !!options.caseSensitive,
-      isWordMatch: !!options.wholeWord,
-      isRegExp: !!options.regex,
-    };
-
-    const searchOptions: any = {
-      include: `**/${this.FILE_GLOB}`,
-    };
-
-    const workspaceAny: any = vscode.workspace;
-    if (typeof workspaceAny.findTextInFiles === 'function') {
-      await workspaceAny.findTextInFiles(searchQuery, searchOptions, (result: any) => {
-        found.add(result.uri.toString());
-      });
-    }
-
-    if (found.size === 0) {
-      // fallback to manual file listing if no match was found
-      const files = await vscode.workspace.findFiles(`**/${this.FILE_GLOB}`);
-      return files;
-    }
-
-    return Array.from(found).map(u => vscode.Uri.parse(u));
+    // use stable API to retrieve candidate files
+    const files = await vscode.workspace.findFiles(includeGlob, excludeGlob);
+    return files;
   }
 
 
