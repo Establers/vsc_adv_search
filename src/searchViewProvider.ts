@@ -10,6 +10,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
   private _currentMatchIndex: number = -1;
   private _searchQuery: string = "";
   private _searchOptions: SearchOptions = {};
+  private _hasMoreResults: boolean = false;
 
   constructor(private readonly _extensionUri: vscode.Uri) {}
 
@@ -35,14 +36,18 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
         case 'search':
           this._performSearch(data.query, data.options);
           break;
+        case 'loadMore':
+          vscode.commands.executeCommand('advSearch.loadMoreResults');
+          break;
       }
     });
   }
 
-  public updateSearchResults(results: SearchMatch[], query: string, options: SearchOptions) {
+  public updateSearchResults(results: SearchMatch[], query: string, options: SearchOptions, hasMore: boolean) {
     this._searchResults = results;
     this._searchQuery = query;
     this._searchOptions = options;
+    this._hasMoreResults = hasMore;
     this._currentMatchIndex = -1;
     
     if (this._view) {
@@ -55,6 +60,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
     this._searchQuery = "";
     this._searchOptions = {};
     this._currentMatchIndex = -1;
+    this._hasMoreResults = false;
     
     if (this._view) {
       this._view.webview.html = this._getHtmlForWebview(this._view.webview);
@@ -257,7 +263,8 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
         <div id="results">
           ${this._searchResults.length > 0 ? results : (this._searchQuery ? '<div class="no-results">검색 결과가 없습니다</div>' : '<div class="welcome-message">Advanced Search 패널입니다.<br>검색어를 입력하고 검색 버튼을 클릭하세요.</div>')}
         </div>
-        
+        ${this._hasMoreResults ? '<button class="search-btn" id="loadMoreBtn" onclick="loadMore()">더 보기</button>' : ''}
+
         <script>
           const vscode = acquireVsCodeApi();
           
@@ -282,6 +289,10 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
               type: 'goToMatch',
               index: index
             });
+          }
+
+          function loadMore() {
+            vscode.postMessage({ type: 'loadMore' });
           }
           
           

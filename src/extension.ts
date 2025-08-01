@@ -12,6 +12,9 @@ export class AdvancedSearchProvider {
   private searchOptions: any = {};
   private viewProvider: SearchViewProvider;
   private context: vscode.ExtensionContext;
+  private fileUris: vscode.Uri[] = [];
+  private fileIndex: number = 0;
+  private hasMoreResults: boolean = false;
 
   public static getInstance(context?: vscode.ExtensionContext): AdvancedSearchProvider {
     if (!AdvancedSearchProvider.instance) {
@@ -39,6 +42,8 @@ export class AdvancedSearchProvider {
     if (!query) return;
 
     this.searchOptions = options || await this.getSearchOptions();
+    const config = vscode.workspace.getConfiguration('advSearch');
+    const maxResults = config.get<number>('maxResults', 1000);
     this.searchQuery = query;
     this.searchResults = [];
     this.currentMatchIndex = -1;
@@ -51,38 +56,28 @@ export class AdvancedSearchProvider {
       return;
     }
 
-    vscode.window.withProgress({
+    this.fileUris = filteredFiles;
+    this.fileIndex = 0;
+    this.hasMoreResults = false;
+
+    await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: this.searchOptions.commentsOnly
         ? "주석만 검색 중..."
         : (this.searchOptions.includeComments ? "주석 포함 검색 중..." : "주석 제외 검색 중..."),
       cancellable: true
-    }, async (progress, token) => {
-      const concurrency = os.cpus().length || 4;
-      const limit = this.pLimit(concurrency);
-
-      const promises = filteredFiles.map(uri =>
-        limit(() => this.searchFileDirectly(uri, query!, this.searchOptions).then(matches => {
-          this.searchResults.push(...matches);
-        }))
-      );
-
-      progress.report({ increment: 0 });
-      await Promise.all(promises);
-      progress.report({ increment: 100 });
-
-      if (this.searchResults.length > 0) {
-        // 사이드바 뷰 업데이트
-        this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery, this.searchOptions);
-        
-        // 사이드바 뷰 표시
-        await vscode.commands.executeCommand('advSearch.searchResults.focus');
-        
-        vscode.window.showInformationMessage(`${this.searchResults.length}개의 결과를 찾았습니다.`);
-      } else {
-        vscode.window.showInformationMessage("검색 결과가 없습니다.");
-      }
+    }, async () => {
+      await this.collectResults(maxResults);
     });
+
+    if (this.searchResults.length > 0) {
+      this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery, this.searchOptions, this.hasMoreResults);
+      await vscode.commands.executeCommand('advSearch.searchResults.focus');
+
+      vscode.window.showInformationMessage(`${this.searchResults.length}개의 결과를 찾았습니다.` + (this.hasMoreResults ? ' 더 보기 버튼으로 추가 결과를 불러올 수 있습니다.' : ''));
+    } else {
+      vscode.window.showInformationMessage("검색 결과가 없습니다.");
+    }
   }
 
   async getSearchOptions() {
@@ -133,6 +128,29 @@ export class AdvancedSearchProvider {
     this.goToMatch(this.currentMatchIndex);
   }
 
+  async loadMoreResults() {
+    if (!this.hasMoreResults) {
+      vscode.window.showInformationMessage('더 이상 결과가 없습니다.');
+      return;
+    }
+
+    const config = vscode.workspace.getConfiguration('advSearch');
+    const maxResults = config.get<number>('maxResults', 1000);
+    const target = this.searchResults.length + maxResults;
+
+    await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: '추가 결과 검색 중...'
+    }, async () => {
+      await this.collectResults(target);
+    });
+
+    this.viewProvider.updateSearchResults(this.searchResults, this.searchQuery, this.searchOptions, this.hasMoreResults);
+    await vscode.commands.executeCommand('advSearch.searchResults.focus');
+
+    vscode.window.showInformationMessage(`총 ${this.searchResults.length}개 결과를 표시합니다.` + (this.hasMoreResults ? ' 더 보기 버튼으로 계속 불러올 수 있습니다.' : ' 마지막 결과입니다.'));
+  }
+
   setCurrentMatchIndex(index: number) {
     if (index < 0 || index >= this.searchResults.length) return;
     this.currentMatchIndex = index;
@@ -165,6 +183,9 @@ export class AdvancedSearchProvider {
     this.searchResults = [];
     this.searchQuery = "";
     this.currentMatchIndex = -1;
+    this.fileUris = [];
+    this.fileIndex = 0;
+    this.hasMoreResults = false;
     this.viewProvider.clearResults();
   }
 
@@ -199,6 +220,20 @@ export class AdvancedSearchProvider {
     return matches;
   }
 
+  private async collectResults(targetCount: number): Promise<void> {
+    while (this.fileIndex < this.fileUris.length && this.searchResults.length < targetCount) {
+      const uri = this.fileUris[this.fileIndex++];
+      const matches = await this.searchFileDirectly(uri, this.searchQuery, this.searchOptions);
+      for (const m of matches) {
+        this.searchResults.push(m);
+        if (this.searchResults.length >= targetCount) {
+          break;
+        }
+      }
+    }
+    this.hasMoreResults = this.fileIndex < this.fileUris.length;
+  }
+
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -218,8 +253,12 @@ export function activate(context: vscode.ExtensionContext) {
     searchProvider.nextMatch()
   );
   
-  const prevMatchCommand = vscode.commands.registerCommand("advSearch.prevMatch", () => 
+  const prevMatchCommand = vscode.commands.registerCommand("advSearch.prevMatch", () =>
     searchProvider.prevMatch()
+  );
+
+  const loadMoreCommand = vscode.commands.registerCommand("advSearch.loadMoreResults", () =>
+    searchProvider.loadMoreResults()
   );
 
   const clearResultsCommand = vscode.commands.registerCommand("advSearch.clearResults", () => 
@@ -231,6 +270,7 @@ export function activate(context: vscode.ExtensionContext) {
     searchCommand,
     nextMatchCommand,
     prevMatchCommand,
+    loadMoreCommand,
     clearResultsCommand
   );
 }
