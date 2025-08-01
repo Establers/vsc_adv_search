@@ -74,6 +74,26 @@ npm run compile
 npm run watch
 ```
 
+## VSIX 패키징 및 사내 배포
+
+`vsce` 도구를 사용해 VSIX 파일을 만들 수 있습니다. 전역 설치 후 `vsce package`
+를 실행하면 현재 버전의 VSIX 파일이 생성됩니다.
+
+```bash
+# vsce 설치 (한 번만 수행)
+npm install -g vsce
+
+# VSIX 패키지 생성
+vsce package
+```
+
+생성된 `.vsix` 파일을 사내 파일 서버 등에 배포하고, 각 개발자는 VS Code 명령 팔레트의
+`Extensions: Install from VSIX...`을 선택하거나 다음 명령어로 설치할 수 있습니다.
+
+```bash
+code --install-extension <파일명>.vsix
+```
+
 ## 라이선스
 
 MIT License
