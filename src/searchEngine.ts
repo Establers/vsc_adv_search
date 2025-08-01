@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+import type * as vscode from 'vscode';
 import { promises as fs } from "fs";
 import * as iconv from "iconv-lite";
 import * as jschardet from "jschardet";
@@ -27,6 +27,7 @@ export class SearchEngine {
   public static readonly FILE_GLOB = "*.{c,cpp,h,hpp,js,ts}";
 
   public static async findCandidateFiles(_query: string, _options: SearchOptions = {}): Promise<vscode.Uri[]> {
+    const vscode = require('vscode') as typeof import('vscode');
     const includeGlob = `**/${this.FILE_GLOB}`;
 
     // use stable API to retrieve candidate files
