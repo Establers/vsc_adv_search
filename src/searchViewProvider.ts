@@ -126,6 +126,22 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             font-size: 11px;
           }
 
+          .patterns {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+          }
+
+          .pattern-input {
+            flex: 1;
+            padding: 4px 6px;
+            border: 1px solid var(--vscode-input-border);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 3px;
+            font-size: 11px;
+          }
+
           .options label {
             display: flex;
             align-items: center;
@@ -265,6 +281,10 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           <label><input type="checkbox" id="includeComments" ${this._searchOptions.includeComments ? 'checked' : ''}>주석 포함</label>
           <label><input type="checkbox" id="commentsOnly" ${this._searchOptions.commentsOnly ? 'checked' : ''}>주석만</label>
         </div>
+        <div class="patterns">
+          <input type="text" class="pattern-input" id="includePattern" placeholder="포함 패턴 (glob)" value="${this._escapeHtml(this._searchOptions.includePattern || '')}">
+          <input type="text" class="pattern-input" id="excludePattern" placeholder="제외 패턴 (glob)" value="${this._escapeHtml(this._searchOptions.excludePattern || '')}">
+        </div>
         <div class="search-info">
             ${this._searchQuery ? `"${this._escapeHtml(this._searchQuery)}" - ${this._searchResults.length}개 결과` : '검색어를 입력하고 검색 버튼을 클릭하세요'}
           </div>
@@ -290,7 +310,9 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
               wholeWord: document.getElementById('wholeWord').checked,
               regex: document.getElementById('regex').checked,
               includeComments: document.getElementById('includeComments').checked,
-              commentsOnly: document.getElementById('commentsOnly').checked
+              commentsOnly: document.getElementById('commentsOnly').checked,
+              includePattern: document.getElementById('includePattern').value,
+              excludePattern: document.getElementById('excludePattern').value
             };
             vscode.postMessage({
               type: 'search',
