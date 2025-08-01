@@ -12,16 +12,21 @@ export class AdvancedSearchProvider {
   private searchQuery: string = "";
   private searchOptions: any = {};
   private viewProvider: SearchViewProvider;
+  private context: vscode.ExtensionContext;
 
-  public static getInstance(): AdvancedSearchProvider {
+  public static getInstance(context?: vscode.ExtensionContext): AdvancedSearchProvider {
     if (!AdvancedSearchProvider.instance) {
-      AdvancedSearchProvider.instance = new AdvancedSearchProvider();
+      if (!context) {
+        throw new Error('ExtensionContext required for initialization');
+      }
+      AdvancedSearchProvider.instance = new AdvancedSearchProvider(context);
     }
     return AdvancedSearchProvider.instance;
   }
 
-  constructor() {
-    this.viewProvider = new SearchViewProvider(vscode.extensions.getExtension('vsc-adv-search')?.extensionUri || vscode.Uri.file(''));
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+    this.viewProvider = new SearchViewProvider(context.extensionUri);
   }
 
   async searchIgnoreComments(query?: string, options?: any) {
@@ -56,7 +61,7 @@ export class AdvancedSearchProvider {
     }, async (progress, token) => {
       const concurrency = os.cpus().length || 4;
       const limit = this.pLimit(concurrency);
-      const workerPath = path.join(__dirname, 'searchWorker.js');
+      const workerPath = this.context.asAbsolutePath(path.join('out', 'searchWorker.js'));
 
       const promises = filteredFiles.map(uri =>
         limit(() => this.runWorker(workerPath, uri, query!, this.searchOptions).then(matches => {
@@ -205,7 +210,7 @@ export class AdvancedSearchProvider {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  const searchProvider = AdvancedSearchProvider.getInstance();
+  const searchProvider = AdvancedSearchProvider.getInstance(context);
 
   // 사이드바 뷰 프로바이더 등록
   const viewProvider = vscode.window.registerWebviewViewProvider(
