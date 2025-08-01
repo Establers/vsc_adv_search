@@ -219,7 +219,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             user-select: none;
           }
 
-
           .file-results {
             margin-left: 12px;
             margin-top: 4px;
@@ -325,7 +324,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           function loadMore() {
             vscode.postMessage({ type: 'loadMore' });
           }
-
+          
           function toggleGroup(id) {
             const el = document.getElementById(id);
             if (!el) return;
