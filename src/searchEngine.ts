@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as iconv from "iconv-lite";
 import * as jschardet from "jschardet";
 import AhoCorasick from "aho-corasick";
+import { execFile } from "child_process";
+import * as path from "path";
 
 export interface SearchMatch {
   uri: vscode.Uri;
@@ -24,6 +26,46 @@ export interface SearchOptions {
 }
 
 export class SearchEngine {
+  /**
+   * ripgrep을 이용해 패턴이 포함된 파일 목록을 찾는다.
+   */
+  public static async findCandidateFiles(query: string, options: SearchOptions = {}): Promise<vscode.Uri[]> {
+    const folders = vscode.workspace.workspaceFolders || [];
+    const results: vscode.Uri[] = [];
+
+    for (const folder of folders) {
+      const cwd = folder.uri.fsPath;
+      const args: string[] = ["--files-with-matches", "-g", "*.c", "-g", "*.h", "-g", "!*.obj"];
+
+      if (!options.caseSensitive) args.push("-i");
+      if (options.wholeWord) args.push("-w");
+
+      if (options.regex) {
+        args.push("-e", query);
+      } else {
+        args.push("-F", query);
+      }
+
+      try {
+        const stdout: string = await new Promise((resolve, reject) => {
+          execFile("rg", args, { cwd }, (err, out) => {
+            if (err && (err as any).code !== 1) {
+              return resolve("");
+            }
+            resolve(out.toString());
+          });
+        });
+
+        const files = stdout.split(/\r?\n/).filter(Boolean).map(f => vscode.Uri.file(path.join(cwd, f)));
+        results.push(...files);
+      } catch {
+        // ignore errors
+      }
+    }
+
+    return results;
+  }
+
   /**
    * 파일에서 문자열 검색 (옵션에 따라 주석 포함 여부 처리)
    */
