@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as iconv from "iconv-lite";
 import * as jschardet from "jschardet";
+import AhoCorasick from "aho-corasick";
 
 export interface SearchMatch {
   uri: vscode.Uri;
@@ -28,7 +29,7 @@ export class SearchEngine {
    */
   public static async searchFile(
     uri: vscode.Uri,
-    needle: string,
+    needle: string | string[],
     options: SearchOptions = {},
     emit: (match: SearchMatch) => void
   ): Promise<void> {
@@ -51,12 +52,17 @@ export class SearchEngine {
 
       // 한글 등 유니코드 문자열 처리를 위해 NFC 정규화
       text = text.normalize('NFC');
-      needle = needle.normalize('NFC');
-      
-      if (options.regex) {
-        this.searchWithRegex(text, uri, needle, options, emit);
+
+      if (Array.isArray(needle)) {
+        const needles = needle.map(n => n.normalize('NFC'));
+        this.searchWithMultiple(text, uri, needles, options, emit);
       } else {
-        this.searchWithString(text, uri, needle, options, emit);
+        const normalized = needle.normalize('NFC');
+        if (options.regex) {
+          this.searchWithRegex(text, uri, normalized, options, emit);
+        } else {
+          this.searchWithString(text, uri, normalized, options, emit);
+        }
       }
     } catch (error) {
       console.error(`파일 읽기 실패: ${uri.fsPath}`, error);
@@ -204,6 +210,154 @@ export class SearchEngine {
               isComment: ["line", "block"].includes(mode)
             });
           }
+          i++;
+          column++;
+      }
+    }
+  }
+
+  /**
+   * 여러 문자열 동시 검색 (Aho-Corasick)
+   */
+  private static searchWithMultiple(
+    text: string,
+    uri: vscode.Uri,
+    needles: string[],
+    options: SearchOptions,
+    emit: (match: SearchMatch) => void
+  ): void {
+    const ac = new AhoCorasick();
+    for (const w of needles) {
+      const key = options.caseSensitive ? w : w.toLowerCase();
+      ac.add(key, w);
+    }
+    ac.build_fail();
+
+    let node: any = ac.trie;
+    let i = 0;
+    let line = 1;
+    let column = 1;
+    const len = text.length;
+
+    let mode: "code" | "line" | "block" | "str" | "char" = "code";
+    let esc = false;
+
+    const feed = (ch: string) => {
+      const searchCh = options.caseSensitive ? ch : ch.toLowerCase();
+      while (node && !node.next[searchCh]) node = node.fail;
+      if (!node) node = ac.trie;
+      if (node.next[searchCh]) {
+        node = node.next[searchCh];
+        ac.foreach_match(node, i + 1, (found: string, _data: any, start: number) => {
+          const matchLen = found.length;
+          const startIdx = start;
+
+          if (options.wholeWord) {
+            const before = startIdx > 0 ? text[startIdx - 1] : '';
+            const after = startIdx + matchLen < text.length ? text[startIdx + matchLen] : '';
+            const wordChar = /[a-zA-Z0-9_]/;
+            if (wordChar.test(before) || wordChar.test(after)) return;
+          }
+
+          const eol = text.indexOf('\n', startIdx);
+          const lineStart = text.lastIndexOf('\n', startIdx) + 1;
+          const lineEnd = eol === -1 ? text.length : eol;
+          const lineText = text.slice(lineStart, lineEnd);
+          const snippet = lineText.length > 200 ? lineText.slice(0, 200) : lineText;
+          const isComment = mode === 'line' || mode === 'block';
+
+          if (options.commentsOnly && !isComment) return;
+          if (!options.includeComments && isComment) return;
+
+          emit({
+            uri,
+            line,
+            column: column - matchLen + 1,
+            snippet: snippet.trim(),
+            lineText,
+            matchLength: matchLen,
+            isComment
+          });
+        });
+      }
+    };
+
+    while (i < len) {
+      const ch = text[i];
+      const next = i + 1 < len ? text[i + 1] : '';
+
+      if (ch === '\n') {
+        if (mode === 'line') mode = 'code';
+        feed(ch);
+        line++;
+        column = 1;
+        i++;
+        continue;
+      }
+
+      switch (mode) {
+        case 'line':
+          feed(ch);
+          i++;
+          column++;
+          continue;
+        case 'block':
+          if (ch === '*' && next === '/') {
+            feed(ch);
+            feed(next);
+            mode = 'code';
+            i += 2;
+            column += 2;
+            continue;
+          }
+          feed(ch);
+          i++;
+          column++;
+          continue;
+        case 'str':
+          feed(ch);
+          if (!esc && ch === '"') mode = 'code';
+          esc = ch === '\\' ? !esc : false;
+          i++;
+          column++;
+          continue;
+        case 'char':
+          feed(ch);
+          if (!esc && ch === "'") mode = 'code';
+          esc = ch === '\\' ? !esc : false;
+          i++;
+          column++;
+          continue;
+        default:
+          if (ch === '/' && next === '/') {
+            mode = 'line';
+            feed(ch);
+            feed(next);
+            i += 2;
+            column += 2;
+            continue;
+          }
+          if (ch === '/' && next === '*') {
+            mode = 'block';
+            i += 2;
+            column += 2;
+            continue;
+          }
+          if (ch === '"') {
+            mode = 'str';
+            feed(ch);
+            i++;
+            column++;
+            continue;
+          }
+          if (ch === "'") {
+            mode = 'char';
+            feed(ch);
+            i++;
+            column++;
+            continue;
+          }
+          feed(ch);
           i++;
           column++;
       }
