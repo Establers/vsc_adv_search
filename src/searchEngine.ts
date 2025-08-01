@@ -43,7 +43,7 @@ export class SearchEngine {
       // 인코딩 자동 감지
       let encoding = 'utf-8';
       try {
-        const detected = jschardet.detect(buffer);
+        const detected = jschardet.detect(buffer.slice(0, 1024));
         if (detected && detected.encoding) {
           encoding = detected.encoding.toLowerCase();
         }
