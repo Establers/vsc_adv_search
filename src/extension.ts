@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as os from "os";
 import { SearchEngine, SearchMatch } from "./searchEngine";
 import { SearchViewProvider } from "./searchViewProvider";
 
@@ -36,7 +37,7 @@ export class AdvancedSearchProvider {
     this.searchResults = [];
     this.currentMatchIndex = -1;
 
-    const files = await vscode.workspace.findFiles("**/*.{js,ts,jsx,tsx,c,cpp,h,hpp,java,py,cs,php,rb,go,rs,swift,kt}");
+    const files = await vscode.workspace.findFiles("**/*.{c,h,py}");
     const filteredFiles = files.filter(uri => SearchEngine.shouldIncludeFile(uri, this.searchOptions));
 
     if (filteredFiles.length === 0) {
@@ -51,7 +52,8 @@ export class AdvancedSearchProvider {
         : (this.searchOptions.includeComments ? "주석 포함 검색 중..." : "주석 제외 검색 중..."),
       cancellable: true
     }, async (progress, token) => {
-      const limit = this.pLimit(8);
+      const concurrency = os.cpus().length || 4;
+      const limit = this.pLimit(concurrency);
       const promises = filteredFiles.map((uri, index) => 
         limit(() => SearchEngine.searchFile(uri, query!, this.searchOptions, (match: SearchMatch) => {
           this.searchResults.push(match);
