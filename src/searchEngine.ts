@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+import type * as vscode from 'vscode';
 import { promises as fs } from "fs";
 import * as iconv from "iconv-lite";
 import * as jschardet from "jschardet";
@@ -20,20 +20,18 @@ export interface SearchOptions {
   regex?: boolean;
   includeComments?: boolean;
   commentsOnly?: boolean;
-  includePattern?: string;
-  excludePattern?: string;
 }
 
 export class SearchEngine {
 
   public static readonly FILE_GLOB = "*.{c,cpp,h,hpp,js,ts}";
 
-  public static async findCandidateFiles(_query: string, options: SearchOptions = {}): Promise<vscode.Uri[]> {
-    const includeGlob = options.includePattern ? options.includePattern : `**/${this.FILE_GLOB}`;
-    const excludeGlob = options.excludePattern;
+  public static async findCandidateFiles(_query: string, _options: SearchOptions = {}): Promise<vscode.Uri[]> {
+    const vscode = require('vscode') as typeof import('vscode');
+    const includeGlob = `**/${this.FILE_GLOB}`;
 
     // use stable API to retrieve candidate files
-    const files = await vscode.workspace.findFiles(includeGlob, excludeGlob);
+    const files = await vscode.workspace.findFiles(includeGlob);
     return files;
   }
 
@@ -568,23 +566,7 @@ export class SearchEngine {
   /**
    * 파일 필터링
    */
-  public static shouldIncludeFile(uri: vscode.Uri, options: SearchOptions): boolean {
-    const relativePath = vscode.workspace.asRelativePath(uri);
-    
-    if (options.includePattern) {
-      const includeRegex = new RegExp(options.includePattern);
-      if (!includeRegex.test(relativePath)) {
-        return false;
-      }
-    }
-    
-    if (options.excludePattern) {
-      const excludeRegex = new RegExp(options.excludePattern);
-      if (excludeRegex.test(relativePath)) {
-        return false;
-      }
-    }
-    
+  public static shouldIncludeFile(_uri: vscode.Uri, _options: SearchOptions): boolean {
     return true;
   }
-} 
+}

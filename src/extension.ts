@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as os from "os";
 import * as path from "path";
-import { Worker } from "worker_threads";
 import { SearchEngine, SearchMatch } from "./searchEngine";
 import { SearchViewProvider } from "./searchViewProvider";
 
@@ -12,16 +11,21 @@ export class AdvancedSearchProvider {
   private searchQuery: string = "";
   private searchOptions: any = {};
   private viewProvider: SearchViewProvider;
+  private context: vscode.ExtensionContext;
 
-  public static getInstance(): AdvancedSearchProvider {
+  public static getInstance(context?: vscode.ExtensionContext): AdvancedSearchProvider {
     if (!AdvancedSearchProvider.instance) {
-      AdvancedSearchProvider.instance = new AdvancedSearchProvider();
+      if (!context) {
+        throw new Error('ExtensionContext required for initialization');
+      }
+      AdvancedSearchProvider.instance = new AdvancedSearchProvider(context);
     }
     return AdvancedSearchProvider.instance;
   }
 
-  constructor() {
-    this.viewProvider = new SearchViewProvider(vscode.extensions.getExtension('vsc-adv-search')?.extensionUri || vscode.Uri.file(''));
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+    this.viewProvider = new SearchViewProvider(context.extensionUri);
   }
 
   async searchIgnoreComments(query?: string, options?: any) {
@@ -56,10 +60,9 @@ export class AdvancedSearchProvider {
     }, async (progress, token) => {
       const concurrency = os.cpus().length || 4;
       const limit = this.pLimit(concurrency);
-      const workerPath = path.join(__dirname, 'searchWorker.js');
 
       const promises = filteredFiles.map(uri =>
-        limit(() => this.runWorker(workerPath, uri, query!, this.searchOptions).then(matches => {
+        limit(() => this.searchFileDirectly(uri, query!, this.searchOptions).then(matches => {
           this.searchResults.push(...matches);
         }))
       );
@@ -184,28 +187,22 @@ export class AdvancedSearchProvider {
     });
   }
 
-  private runWorker(workerPath: string, uri: vscode.Uri, query: string, options: any): Promise<SearchMatch[]> {
-    return new Promise((resolve, reject) => {
-      const worker = new Worker(workerPath, { workerData: { uri: uri.toString(), query, options } });
-      worker.on('message', (matches: any[]) => {
-        const parsed = matches.map(m => ({
-          ...m,
-          uri: vscode.Uri.parse(m.uri)
-        }));
-        resolve(parsed);
+  private async searchFileDirectly(uri: vscode.Uri, query: string, options: any): Promise<SearchMatch[]> {
+    const matches: SearchMatch[] = [];
+    try {
+      await SearchEngine.searchFile(uri, query, options, (m) => {
+        matches.push(m);
       });
-      worker.on('error', reject);
-      worker.on('exit', (code) => {
-        if (code !== 0) {
-          reject(new Error(`Worker stopped with exit code ${code}`));
-        }
-      });
-    });
+    } catch (error) {
+      console.error(`파일 검색 오류: ${uri.fsPath}`, error);
+    }
+    return matches;
   }
+
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  const searchProvider = AdvancedSearchProvider.getInstance();
+  const searchProvider = AdvancedSearchProvider.getInstance(context);
 
   // 사이드바 뷰 프로바이더 등록
   const viewProvider = vscode.window.registerWebviewViewProvider(
