@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { SearchMatch, SearchOptions } from "./searchEngine";
+import { AdvancedSearchProvider } from "./extension";
 
 export class SearchViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "advSearch.searchResults";
@@ -355,6 +356,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
 
     const match = this._searchResults[index];
     this._currentMatchIndex = index;
+    AdvancedSearchProvider.getInstance().setCurrentMatchIndex(index);
 
     try {
       const document = await vscode.workspace.openTextDocument(match.uri);
@@ -400,4 +402,10 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
       this._view.webview.html = this._getHtmlForWebview(this._view.webview);
     }
   }
-} 
+
+  public highlightMatch(index: number): void {
+    if (index < 0 || index >= this._searchResults.length) return;
+    this._currentMatchIndex = index;
+    this._updateView();
+  }
+}
