@@ -97,8 +97,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
 
       return `
         <div class="file-group">
-          <div class="file-header" onclick="toggleGroup('${groupId}', this)">
-            <span class="toggle"></span>
+          <div class="file-header" onclick="toggleGroup('${groupId}')">
             <span class="file-name">${fileName}</span>
             <span class="file-path">${dirPath}</span>
           </div>
@@ -207,7 +206,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           }
           
           .file-group {
-            margin-bottom: 10px;
+            margin-bottom: 4px;
           }
 
           .file-header {
@@ -218,16 +217,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             font-size: 11px;
             padding: 2px 4px;
             user-select: none;
-          }
-
-          .file-header .toggle::before {
-            content: '▼';
-            display: inline-block;
-            width: 10px;
-          }
-
-          .file-header.collapsed .toggle::before {
-            content: '▶';
           }
 
           .file-results {
@@ -335,19 +324,12 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
           function loadMore() {
             vscode.postMessage({ type: 'loadMore' });
           }
-
-          function toggleGroup(id, header) {
+          
+          function toggleGroup(id) {
             const el = document.getElementById(id);
             if (!el) return;
             const collapsed = el.style.display === 'none';
             el.style.display = collapsed ? 'block' : 'none';
-            if (header) {
-              if (collapsed) {
-                header.classList.remove('collapsed');
-              } else {
-                header.classList.add('collapsed');
-              }
-            }
           }
           
           
