@@ -281,7 +281,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
         <div class="options">
           <label><input type="checkbox" id="caseSensitive" ${this._searchOptions.caseSensitive ? 'checked' : ''}>대소문자 구분</label>
           <label><input type="checkbox" id="wholeWord" ${this._searchOptions.wholeWord ? 'checked' : ''}>전체 단어</label>
-          <label><input type="checkbox" id="regex" ${this._searchOptions.regex ? 'checked' : ''}>정규식</label>
           <label><input type="checkbox" id="includeComments" ${this._searchOptions.includeComments ? 'checked' : ''}>주석 포함</label>
           <label><input type="checkbox" id="commentsOnly" ${this._searchOptions.commentsOnly ? 'checked' : ''}>주석만</label>
         </div>
@@ -303,7 +302,6 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             const options = {
               caseSensitive: document.getElementById('caseSensitive').checked,
               wholeWord: document.getElementById('wholeWord').checked,
-              regex: document.getElementById('regex').checked,
               includeComments: document.getElementById('includeComments').checked,
               commentsOnly: document.getElementById('commentsOnly').checked
             };

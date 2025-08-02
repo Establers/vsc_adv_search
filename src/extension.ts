@@ -95,11 +95,6 @@ export class AdvancedSearchProvider {
     ], { placeHolder: "전체 단어 검색 여부를 선택하세요" });
     options.wholeWord = wholeWord === "전체 단어";
 
-    const useRegex = await vscode.window.showQuickPick([
-      "일반 검색",
-      "정규식 검색"
-    ], { placeHolder: "정규식 검색 여부를 선택하세요" });
-    options.regex = useRegex === "정규식 검색";
 
     const commentOption = await vscode.window.showQuickPick([
       "주석 제외",
